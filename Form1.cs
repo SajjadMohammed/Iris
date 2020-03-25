@@ -7,7 +7,7 @@ namespace Iris
     public partial class Form1 : Form
     {
 
-        Bitmap bitmap;
+        Bitmap bitmap, bitmap2, bitmap3;
 
 
         public Form1()
@@ -27,19 +27,19 @@ namespace Iris
             bitmap = (Bitmap)Image.FromFile(openFileDialog.FileName, false);
             bitmap = ImageLab.Load(bitmap);
             originalImage.Image = bitmap;
-
         }
 
         private void FirstStageBtn_Click(object sender, EventArgs e)
         {
-            firstStageImage.Image = ImageLab.FirstStage(bitmap);
-            bitmap = ImageLab.FirstStage(bitmap);
+            firstStageImage.Image = bitmap = ImageLab.FirstStage(bitmap);
         }
 
         private void SecondStageBtn_Click(object sender, EventArgs e)
         {
-           secondStageImage.Image = bitmap = ImageLab.SecondStage(bitmap);
-            
+            bitmap = ImageLab.CropImage(bitmap);
+            bitmap = ImageLab.SecondStage(bitmap);
+
+            secondStageImage.Image = bitmap;// = //ImageLab.CropImage(bitmap);
         }
 
         private void FourthStageBtn_Click(object sender, EventArgs e)

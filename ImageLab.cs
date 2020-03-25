@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 namespace Iris
 {
@@ -14,10 +14,11 @@ namespace Iris
         static byte Gry;
 
         static double One;
-        static byte Flg, G, C;
+        static byte G, C;
         static int Hm, HmN, I, Wm, WmN, X1, X2, Xx, Y1, Y2, Yy;
-        static long Max, Min;
-        static double Rat, Sm, Xc, Yc, Sm2, Rad, Ang, SmC2, SmS2, SmR, SmRC, SmRs, A0, A1, A2, dR;
+        static int Max, Min, Flg;
+        static float Sm, Sm2;
+        static double Rat, Xc, Yc, Rad, Ang, SmC2, SmS2, SmR, SmRC, SmRs, A0, A1, A2, dR;
         static int X, Y;
         static double[] Cs;
         static double[] Sn;
@@ -31,7 +32,8 @@ namespace Iris
 
 
         //byte Tbl[];
-        static double S, R1, R2, Cc;
+        static double R1, R2, Cc;
+        static float S;
 
 
 
@@ -43,7 +45,7 @@ namespace Iris
         static byte[,] gray;
         static byte[,] Mask1;
         static byte[,] Mask2;
-        static byte[,] temp;
+        static long[,] temp;
         static byte[,] Red;
         static byte[,] Grn;
         static byte[,] Blu;
@@ -93,6 +95,9 @@ namespace Iris
                 {
                     for (j = 0; j < bmp.Width; j++)
                     {
+                        Red[j, i] = p[2];
+                        Grn[j, i] = p[1];
+                        Blu[j, i] = p[0];
                         c[j, i] = Color.FromArgb(p[2], p[1], p[0]);
                         gray[j, i] = p[0];
                         //Convert.ToByte(p[2] * .299 + p[1] * .587 + p[0] * .114);
@@ -108,7 +113,7 @@ namespace Iris
         // first stage
         public static Bitmap FirstStage(Bitmap bmp)
         {
-
+            His = new long[256];
             for (i = 0; i < height; i++)
             {
                 for (j = 0; j < width; j++)
@@ -138,7 +143,7 @@ namespace Iris
             }
 
             Tbl = new byte[256];
-            S = 1.0 / (Max - Min);
+            S = 1.0f / (Max - Min);
 
             for (I = 0; I < 256; I++)
             {
@@ -157,7 +162,7 @@ namespace Iris
             }
 
             Mask1 = new byte[width, height];
-            temp = new byte[width, height];
+            temp = new long[width, height];
             cl[0] = 0;
             cl[1] = 255;
 
@@ -170,27 +175,14 @@ namespace Iris
                     if (I > 128)
                     {
                         Mask1[j, i] = 1;
-                        temp[j, i] = 255;
+                        c[j, i] = Color.FromArgb(255, 255, 255, 255);
                     }
                     else
                     {
                         Mask1[j, i] = 0;
-                        temp[j, i] = 0;
-                    }
-
-                }
-            }
-
-            for (i = 0; i < height; i++)
-            {
-                for (j = 0; j < width; j++)
-                {
-
-                    if (Mask1[j, i] == 1)
-                        c[j, i] = Color.FromArgb(255, 255, 255, 255);
-                    else
                         c[j, i] = Color.FromArgb(0, 0, 0, 0);
-
+                    }
+                    temp[j, i] = cl[Mask1[j, i]];
                 }
             }
 
@@ -267,7 +259,7 @@ namespace Iris
 
             while (Flg == 0)
             {
-                for (j = X1; j < X2; j++)
+                for (j = X1; j <= X2; j++)
                 {
                     if (Mask1[j, Y2] == 1)
                         Flg = 1;
@@ -279,10 +271,10 @@ namespace Iris
             WmN = X2 - X1;
             HmN = Y2 - Y1;
 
-            byte[,] tRed = new byte[WmN + 1, HmN + 1];
-            byte[,] tGrn = new byte[WmN + 1, HmN + 1];
-            byte[,] tBlu = new byte[WmN + 1, HmN + 1];
-            byte[,] tMask1 = new byte[WmN + 1, HmN + 1];
+            byte[,] tRed = new byte[672, 576];
+            byte[,] tGrn = new byte[672, 576];
+            byte[,] tBlu = new byte[672, 576];
+            byte[,] tMask1 = new byte[672, 576];
 
             for (Y = Y1; Y <= Y2; Y++)
             {
@@ -305,9 +297,14 @@ namespace Iris
             Wm = WmN;
             Hm = HmN;
 
+            Red = new byte[672, 576];
+            Blu = new byte[672, 576];
+            Grn = new byte[672, 576];
+            Mask1 = new byte[672, 576];
 
-            for (Y = 0; Y <= Hm; Y++)
-                for (X = 0; X <= Wm; X++)
+
+            for (Y = 0; Y < 576; Y++)
+                for (X = 0; X < 672; X++)
                 {
                     Mask1[X, Y] = tMask1[X, Y];
                     Red[X, Y] = tRed[X, Y];
@@ -323,7 +320,7 @@ namespace Iris
             Array.Clear(His, 0, His.Length);
             Array.Clear(Tbl, 0, Tbl.Length);
 
-
+            // Stage 3 Gamma = 1.5
             His = new long[256];
             Tbl = new byte[256];
             N = 0;
@@ -331,62 +328,61 @@ namespace Iris
             Sm2 = 0;
 
 
-            for (i = 0; i <= Hm; i++)
+            for (i = 0; i < 576; i++)
             {
-                for (j = 0; j <= Wm; j++)
+                for (j = 0; j < 672; j++)
                 {
                     if (Mask1[j, i] == 1)
                     {
-
                         G = gray[j, i];
-                        N += 1;
-                        Sm += G;
-                        Sm2 += G * G;
-
                     }
-
+                    N += 1;
+                    Sm += G;
+                    Sm2 += Convert.ToInt32(G) * G;
                 }
             }
 
 
             Sm /= N;
-            Sm2 = (Sm2 / N) - (Sm * Sm);
-            Sm2 = Math.Pow(Sm2, 2);
-            Min = (long)(Sm - 1.2 * Sm2);
+            Sm2 = Sm2 / N - Sm * Sm;
+            Sm2 = (float)Math.Sqrt(Sm2);
+            Min = (int)(Sm - (1.2 * Sm2));
 
             if (Min < 20)
             {
                 Min = 19;
-                Max = (long)(Sm + 2 * Sm2);
             }
+
+            Max = (int)(Sm + 2 * Sm2);
 
             if (Max > 200)
                 Max = 200;
 
-            S = 1.0 / (Max - Min);
+            S = 1.0f / (Max - Min);
 
+            double ff;
 
-
-            for (I = 0; I <= 255; I++)
+            for (I = 0; I < 256; I++)
             {
                 if (I < Min)
                     Tbl[I] = 0;
                 else if (I >= Max)
                     Tbl[I] = 255;
                 else
-                    Tbl[I] = (byte)(255 * Math.Pow((S * (I - Min)), 1.5));
+                {
+                    ff = (255 * Math.Pow((S * (I - Min)), 1.5f));
+                    Tbl[I] = (byte)ff;
+                }
             }
 
 
-            Mask2 = new byte[Wm, Hm];
+            Mask2 = new byte[672, 576];
 
-
-
-
-            for (i = 0; i < Hm; i++)
-                for (j = 0; j < Wm; j++)
+            for (i = 0; i < 576; i++)
+                for (j = 0; j < 672; j++)
                 {
                     Mask2[j, i] = 0;
+                    c[j, i] = Color.FromArgb(0, 0, 0, 0);
                     if (Mask1[j, i] == 1)
                     {
                         G = gray[j, i];
@@ -406,14 +402,14 @@ namespace Iris
 
                 }
 
-            var bmpdata = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
+            var bmpdata = bitmap.LockBits(new Rectangle(0, 0, 672, 576), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
             var scan0 = bmpdata.Scan0;
             unsafe
             {
                 var p = (byte*)(void*)scan0;
-                for (i = 0; i < bitmap.Height; i++)
+                for (i = 0; i < 576; i++)
                 {
-                    for (j = 0; j < bitmap.Width; j++)
+                    for (j = 0; j < 672; j++)
                     {
                         p[2] = c[j, i].R;
                         p[1] = c[j, i].G;
@@ -539,7 +535,7 @@ namespace Iris
             }
             //
 
-            temp = new byte[Wm, Hm];
+            temp = new long[Wm, Hm];
             for (Y = 0; Y < Hm; Y++)
             {
                 for (X = 0; X < Wm; X++)
@@ -557,14 +553,14 @@ namespace Iris
                 }
             }
             //
-            var bmpdata = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
+            var bmpdata = bitmap.LockBits(new Rectangle(0, 0, 672, 576), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
             var scan0 = bmpdata.Scan0;
             unsafe
             {
                 var p = (byte*)(void*)scan0;
-                for (i = 0; i < bitmap.Height; i++)
+                for (i = 0; i < 576; i++)
                 {
-                    for (j = 0; j < bitmap.Width; j++)
+                    for (j = 0; j < 672; j++)
                     {
                         p[2] = c[j, i].R;
                         p[1] = c[j, i].G;
@@ -691,6 +687,51 @@ namespace Iris
                     }
                 }
             }
+        }
+
+        public static Bitmap CropImage(Bitmap bitmap)
+        {
+            var bmp = bitmap;
+            var rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
+            var rawOriginal = bmp.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+
+            int origByteCount = rawOriginal.Stride * rawOriginal.Height;
+            byte[] origBytes = new byte[origByteCount];
+            Marshal.Copy(rawOriginal.Scan0, origBytes, 0, origByteCount);
+
+            //I want to crop a 100x100 section starting at 15, 15.
+            int startX = 0;
+            int startY = 0;
+            int width = 672;
+            int height = 576;
+            int BPP = 3;        //4 Bpp = 32 bits, 3 = 24, etc.
+
+            byte[] croppedBytes = new byte[width * height * BPP];
+
+            //Iterate the selected area of the original image, and the full area of the new image
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width * BPP; j += BPP)
+                {
+                    int origIndex = (startX * rawOriginal.Stride) + (i * rawOriginal.Stride) + (startY * BPP) + (j);
+                    int croppedIndex = (i * width * BPP) + (j);
+
+                    //copy data: once for each channel
+                    for (int k = 0; k < BPP; k++)
+                    {
+                        croppedBytes[croppedIndex + k] = origBytes[origIndex + k];
+                    }
+                }
+            }
+
+            //copy new data into a bitmap
+            var croppedBitmap = new Bitmap(width, height);
+            var croppedData = croppedBitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+            Marshal.Copy(croppedBytes, 0, croppedData.Scan0, croppedBytes.Length);
+
+            bmp.UnlockBits(rawOriginal);
+            croppedBitmap.UnlockBits(croppedData);
+            return croppedBitmap;
         }
     }
 }
